@@ -113,9 +113,9 @@ def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
   venue = Venue.query.get(venue_id)
-  upcomingShowsQuery = db.session.query(Show).join(Artist).filter(Show.venue_id==venue_id).filter(Show.start_time>datetime.now()).all()
+  upcomingShowsQuery = db.session.query(Show).join(Artist).filter(Show.venue_id==venue_id).filter(Show.start_time > datetime.now()).all()
   upcoming_shows = []
-  pastshowsQuery = db.session.query(Show).join(Artist).filter(Show.venue_id==venue_id).filter(Show.start_time<datetime.now()).all()
+  pastshowsQuery = db.session.query(Show).join(Artist).filter(Show.venue_id==venue_id).filter(Show.start_time < datetime.now()).all()
   past_shows = []
 
   for show in pastshowsQuery:
@@ -258,23 +258,23 @@ def show_artist(artist_id):
 
   for show in pastshowsQuery:
     past_shows.append({
-      'venue_id': show.venue_id,
-      'venue_name': show.venue.name,
-      'artist_image_link': show.venue.image_link,
-      'start_time': show.start_time.strftime("%Y-%m-%d %H:%M:%S")
+      "venue_id": show.venue_id,
+      "venue_name": show.venue.name,
+      "artist_image_link": show.venue.image_link,
+      "start_time": show.start_time.strftime('%Y-%m-%d %H:%M:%S')
     })
     
   upcomingShowsQuery = db.session.query(Show).join(Venue).filter(Show.artist_id==artist_id).filter(Show.start_time>datetime.now()).all()
   upcoming_shows = []
+
   for show in upcomingShowsQuery:
     upcoming_shows.append({
-      'venue_id': show.venue_id,
-      'venue_name': show.venue.name,
-      'artist_image_link': show.venue.image_link,
-      'start_time': show.start_time.strftime('%Y-%m-%d %H:%M:%S')
+      "venue_id": show.venue_id,
+      "venue_name": show.venue.name,
+      "artist_image_link": show.venue.image_link,
+      "start_time": show.start_time.strftime('%Y-%m-%d %H:%M:%S')
     })
 
-  # object class to dict
   data = {
     "id": artist.id,
     "name": artist.name,
