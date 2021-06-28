@@ -21,30 +21,11 @@ class Venue(db.Model):
     website_link = db.Column(db.String(120))
     seeking_talent = db.Column(db.Boolean,default=False)
     seeking_description = db.Column(db.String(120))
-    #making two columns for past and upcoming shows in the venue to ease the counting
-    upcoming_shows_count = db.Column(db.Integer, default=0)
-    past_shows_count = db.Column(db.Integer, default=0)
     #the relationship between venue and show class
     shows = db.relationship('Show', backref=db.backref('venue'), lazy="joined")
 
     def __repr__(self):
-      return f'<Venue {self.id} {self.name}>'
-
-    def get_venues(self):
-      return {
-        'id': self.id,
-        'name': self.name,
-        'city': self.city,
-        'state': self.state,
-        'address': self.address,
-        'genres': self.genres.split(','),
-        'phone': self.phone,
-        'image_link': self.image_link,
-        'facebook_link': self.facebook_link,
-        'website_link': self.website_link,
-        'seeking_talent': self.seeking_talent,
-        'seeking_description': self.seeking_description,
-      }
+      return f'<Venue {self.id} {self.name}>'  
 
 class Artist(db.Model):
     __tablename__ = 'Artist'
@@ -67,20 +48,6 @@ class Artist(db.Model):
     def __repr__(self):
       return f'<Show {self.id} {self.name}>'
 
-    def get_artists(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'city': self.city,
-            'state': self.state,
-            'phone': self.phone,
-            'genres': self.genres.split(','),  
-            'image_link': self.image_link,
-            'facebook_link': self.facebook_link,
-            'website_link': self.website_link,
-            'seeking_venue': self.seeking_venue,
-            'seeking_description': self.seeking_description,
-        }
     
 
 
