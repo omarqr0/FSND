@@ -62,31 +62,26 @@ class Artist(db.Model):
     website_link = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean,default=False)
     seeking_description = db.Column(db.String(120))
-    #additional columns to count the number of the past and upcoming shows for the artist
-    upcoming_shows_count = db.Column(db.Integer, default=0)
-    past_shows_count = db.Column(db.Integer, default=0)
     # declaring the realtionship between Show class and Artist class 
     shows = db.relationship('Show', backref=db.backref('artist'), lazy="joined")
     def __repr__(self):
       return f'<Show {self.id} {self.name}>'
+
     def get_artists(self):
-      return{
-        "id": self.id,
-        "name": self.name,
-        "genres": self.genres.split(','), 
-        "city": self.city,
-        "state": self.state,
-        "phone": self.phone,
-        "website_link": self.website_link,
-        "facebook_link": self.facebook_link,
-        "seeking_venue": self.seeking_venue,
-        "seeking_description":self.seeking_description,
-        "image_link": self.image_link,
-        "past_shows": self.past_shows,
-        "upcoming_shows": self.upcoming_shows,
-        "past_shows_count": self.len(past_shows),
-        "upcoming_shows_count": self.len(upcoming_shows)
-      }
+        return {
+            'id': self.id,
+            'name': self.name,
+            'city': self.city,
+            'state': self.state,
+            'phone': self.phone,
+            'genres': self.genres.split(','),  
+            'image_link': self.image_link,
+            'facebook_link': self.facebook_link,
+            'website_link': self.website_link,
+            'seeking_venue': self.seeking_venue,
+            'seeking_description': self.seeking_description,
+        }
+    
 
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
@@ -98,5 +93,5 @@ class Show(db.Model):
     venue_id = db.Column(db.Integer,db.ForeignKey('Venue.id'),nullable=False)
     upcoming = db.Column(db.Boolean, nullable=False, default=True)
     def __repr__(self):
-      return f'<Show {self.id} {self.name}>'
+      return f'<Show {self.artist_id} {self.name}>'
       
