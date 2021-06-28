@@ -6,7 +6,15 @@ import sys
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import (
+  Flask,
+  render_template,
+  request, 
+  Response, 
+  flash, 
+  redirect, 
+  url_for
+  )
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -15,82 +23,21 @@ from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
 from datetime import datetime
+from models import db, Venue, Artist, Show
+from datetime import datetime
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
 
 app = Flask(__name__)
-moment = Moment(app)
 app.config.from_object('config')
-db = SQLAlchemy(app)
+moment = Moment(app)
+db.init_app(app)
+migrate = Migrate(app, db)
 
 # TODO: connect to a local postgresql database
 migration = Migrate(app, db)
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
-
-class Venue(db.Model):
-    __tablename__ = 'Venue'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
-    city = db.Column(db.String(120), nullable=False)
-    state = db.Column(db.String(120), nullable=False)
-    address = db.Column(db.String(120), nullable=False)
-    phone = db.Column(db.String(120), nullable=False)
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-    genres = db.Column(db.String(120),nullable=False)
-    website_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean,default=False)
-    seeking_description = db.Column(db.String(120))
-    #making two columns for past and upcoming shows in the venue to ease the counting
-    upcoming_shows_count = db.Column(db.Integer, default=0)
-    past_shows_count = db.Column(db.Integer, default=0)
-    #the relationship between venue and show class
-    shows = db.relationship('Show',backref='venue',lazy=True, cascade="save-update, merge, delete")
-
-    def __repr__(self):
-      return f'<Venue {self.id} {self.name}>'
-
-class Artist(db.Model):
-    __tablename__ = 'Artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
-    city = db.Column(db.String(120), nullable=False)
-    state = db.Column(db.String(120), nullable=False)
-    phone = db.Column(db.String(120), nullable=False)
-    genres = db.Column(db.String(120), nullable=False)
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-    website_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean,default=False)
-    seeking_description = db.Column(db.String(120))
-    #additional columns to count the number of the past and upcoming shows for the artist
-    upcoming_shows_count = db.Column(db.Integer, default=0)
-    past_shows_count = db.Column(db.Integer, default=0)
-    # declaring the realtionship between Show class and Artist class 
-    shows = db.relationship('Show',backref='artist',lazy=True, cascade="save-update, merge, delete")
-    def __repr__(self):
-      return f'<Show {self.id} {self.name}>'
-
-
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
-class Show(db.Model):
-    __tablename__ = 'shows'
-    id = db.Column(db.Integer, primary_key=True)
-    start_time = db.Column(db.DateTime, nullable=False)
-    artist_id = db.Column(db.Integer,db.ForeignKey('Artist.id'),nullable=False)
-    venue_id = db.Column(db.Integer,db.ForeignKey('Venue.id'),nullable=False)
-    upcoming = db.Column(db.Boolean, nullable=False, default=True)
-    def __repr__(self):
-      return f'<Show {self.id} {self.name}>'
-            
+      
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
@@ -121,23 +68,23 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
-  areas = db.session.query(Venue.city,Venue.state).group_by(Venue.state, Venue.city).all()
-  data = []
-  for area in areas:
-    venues = db.session.query(Venue.id,Venue.name,Venue.upcoming_shows_count).filter(Venue.city==area[0],Venue.state==area[1]).all()
-    data.append({
-        "city": area[0],
-        "state": area[1],
-        "venues": []
-    })
-    for venue in venues:
-      data[-1]["venues"].append({
-              "id": venue[0],
-              "name": venue[1],
-              "num_upcoming_shows":venue[2]
-      })
+  locals = []
+  venues = Venue.query.all()
 
-  return render_template('pages/venues.html', areas=data);
+  places = Venue.query.distinct(Venue.city, Venue.state).all()
+
+  for place in places:
+      locals.append({
+          'city': place.city,
+          'state': place.state,
+          'venues': [{
+              'id': venue.id,
+              'name': venue.name,
+              'num_upcoming_shows': len([show for show in venue.shows if show.start_time > datetime.now()])
+          } for venue in venues if
+              venue.city == place.city and venue.state == place.state]
+      })
+  return render_template('pages/venues.html', areas=locals)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
@@ -146,13 +93,14 @@ def search_venues():
   results = Venue.query.filter(Venue.name.ilike('%{}%'.format(request.form['search_term']))).all()
   response={
     "count": len(results),
-    "data": []
+    "data": venue.get_venues()
     }
   for venue in results:
     response["data"].append({
         "id": venue.id,
         "name": venue.name,
-        "num_upcoming_shows": venue.upcoming_shows_count
+        "num_upcoming_shows": venue.upcoming_shows_count,
+        
       })
   
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
@@ -177,24 +125,7 @@ def show_venue(venue_id):
     else:
       past_shows.append(show_info)
 
-  data={
-    "id": venue.id,
-    "name": venue.name,
-    "genres": venue.genres.split(','),
-    "address": venue.address,
-    "city": venue.city,
-    "state": venue.state,
-    "phone": venue.phone,
-    "website_link": venue.website_link,
-    "facebook_link": venue.facebook_link,
-    "seeking_talent": venue.seeking_talent,
-    "seeking_description": venue.seeking_description,
-    "image_link": venue.image_link,
-    "past_shows": past_shows,
-    "upcoming_shows": upcoming_shows,
-    "past_shows_count": len(past_shows),
-    "upcoming_shows_count": len(upcoming_shows)
-  }
+  data= venue.get_venues()
   return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
@@ -303,23 +234,7 @@ def show_artist(artist_id):
       upcoming_shows.append(show_info)
     else:
       past_shows.append(show_info)
-  data = {
-    "id": artist.id,
-    "name": artist.name,
-    "genres": artist.genres.split(','), 
-    "city": artist.city,
-    "state": artist.state,
-    "phone": artist.phone,
-    "website_link": artist.website_link,
-    "facebook_link": artist.facebook_link,
-    "seeking_venue": artist.seeking_venue,
-    "seeking_description":artist.seeking_description,
-    "image_link": artist.image_link,
-    "past_shows": past_shows,
-    "upcoming_shows": upcoming_shows,
-    "past_shows_count": len(past_shows),
-    "upcoming_shows_count": len(upcoming_shows)
-  }
+  data = artist.get_artists()
 
   return render_template('pages/show_artist.html', artist=data)
 
@@ -376,18 +291,18 @@ def edit_venue():
   form = VenueForm()
   venue = Venue.query.get(venue_id)
   venue_info={
-    "id": venue.id,
-    "name": venue.name,
-    "genres": venue.genres.split(','),
-    "address": venue.address,
-    "city": venue.city,
-    "state": venue.state,
-    "phone": venue.phone,
-    "website_link": venue.website_link,
-    "facebook_link": venue.facebook_link,
-    "seeking_talent": venue.seeking_talent,
-    "seeking_description": venue.seeking_description,
-    "image_link": venue.image_link
+    'id': venue.id,
+    'name': venue.name,
+    'genres': venue.genres.split(','),
+    'address': venue.address,
+    'city': venue.city,
+    'state': venue.state,
+    'phone': venue.phone,
+    'website_link': venue.website_link,
+    'facebook_link': venue.facebook_link,
+    'seeking_talent': venue.seeking_talent,
+    'seeking_description': venue.seeking_description,
+    'image_link': venue.image_link
   }
   # TODO: populate form with values from venue with ID <venue_id>
   return render_template('forms/edit_venue.html', form=form, venue=venue_info)
