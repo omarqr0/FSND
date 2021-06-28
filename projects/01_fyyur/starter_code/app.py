@@ -447,61 +447,45 @@ def create_shows():
 def create_show_submission():
   # called to create new shows in the db, upon submitting new show listing form
   # TODO: insert form data as a new Show record in the db, instead
-  show = Show()
-  show.artist_id = request.form['artist_id']
-  show.venue_id = request.form['venue_id']
-
-  dateAndTime = request.form['start_time'].split(' ')
-  dateAndTimeList = dateAndTime[0].split('-')
-  dateAndTimeList += dateAndTime[1].split(':') 
-  dateAndTimeLen = len(dateAndTimeList)
-  for i in range(dateAndTimeLen):
-    dateAndTimeList[i] = int(dateAndTimeList[i])
-  show.start_time = datetime(dateAndTimeList[0],dateAndTimeList[1],dateAndTimeList[2],dateAndTimeList[3],dateAndTimeList[4],dateAndTimeList[5])
-  now = datetime.now()
-  show.upcoming = (now < show.start_time)
-
+  form = ShowForm(request.form)
+  error= False
   try:
+    show = Show(
+      artist_id=form.artist_id.data,
+      venue_id=form.venue_id.data,
+      start_time=form.start_time.data
+    )
     db.session.add(show)
-    # updating venue and artist tables
-    updatedArtist = Artist.query.get(show.artist_id)
-    updatedVenue = Venue.query.get(show.venue_id)
-    if(show.upcoming):
-      updatedArtist.upcoming_shows_count += 1
-      updatedVenue.upcoming_shows_count += 1
-    else:
-      updatedArtist.past_shows_count += 1
-      updatedVenue.past_shows_count += 1
-    # on successful db insert, flash success
     db.session.commit()
-    flash('Show was successfully listed!')
+    flash('Show that has the artist is created ')
   except:
+    error= True
     db.session.rollback()
-    # TODO: on unsuccessful db insert, flash an error instead.
-    flash('An error occured. Show could not be listed.')
+    flash('Show was not posted ')
+
   finally:
     db.session.close()
-  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-  return redirect(url_for('index'))
+  return render_template('pages/home.html')
+
 
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template('errors/404.html'), 404
+  return render_template('errors/404.html'), 404
 
 @app.errorhandler(500)
 def server_error(error):
-    return render_template('errors/500.html'), 500
+  return render_template('errors/500.html'), 500
 
 
 if not app.debug:
-    file_handler = FileHandler('error.log')
-    file_handler.setFormatter(
-        Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
-    )
-    app.logger.setLevel(logging.INFO)
-    file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
-    app.logger.info('errors')
+  file_handler = FileHandler('error.log')
+  file_handler.setFormatter(
+      Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+  )
+  app.logger.setLevel(logging.INFO)
+  file_handler.setLevel(logging.INFO)
+  app.logger.addHandler(file_handler)
+  app.logger.info('errors')
 
 #----------------------------------------------------------------------------#
 # Launch.
